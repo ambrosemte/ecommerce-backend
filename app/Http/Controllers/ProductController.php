@@ -5,10 +5,19 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Helpers\Response;
 use App\Models\Product;
+use App\Models\User;
+use App\Services\CurrencyConversionService;
 use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
+    protected $currencyService;
+
+    public function __construct(CurrencyConversionService $currencyService)
+    {
+        $this->currencyService = $currencyService;
+    }
+
     public function show(string $id)
     {
         $product = Product::select(['id', 'store_id', 'name', 'description'])
@@ -22,6 +31,35 @@ class ProductController extends Controller
         if (!$product) {
             return Response::notFound(message: "Product not found");
         }
+
+        $currency = '';
+        // Check if the product is in the user's wishlist
+        if (auth('sanctum')->check()) {
+            $user = User::find(auth('sanctum')->id());
+            $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
+            $currency = $user->preferred_currency;
+        }
+
+        // Convert each variation price
+        $product->productVariations->transform(function ($variation) use ($currency) {
+            $conversion = $this->currencyService->convert($variation->price, $currency);
+
+            $variation->converted_price = $conversion['amount'];
+            $variation->currency = $conversion['currency'];
+
+
+            $variation->discounted_price = ($variation->discount != null)
+                ? round($variation->price - (($variation->discount * $variation->price) / 100), 2)
+                : $variation->price;
+
+            $conversion = $this->currencyService->convert($variation->discounted_price, $currency);
+
+            $variation->converted_discounted_price = $conversion['amount'];
+
+            return $variation;
+        });
+
+        $product->wished_list = $isWished ?? false;
 
         return Response::success(message: "Product retrieved", data: $product->toArray());
     }
@@ -38,13 +76,14 @@ class ProductController extends Controller
             "variations.*.price" => "required|numeric|min:0|max_digits:14",
             "variations.*.discount" => "nullable|numeric|min:1|max:100",
             "variations.*.images" => "required|array|min:1|max:10", // Media for the variation
-            "variations.*.images.*" => "required|file|max:5120|mimes:png,jpg,jpeg", // Image validation
+            "variations.*.images.*" => "required|file|max:5120|mimes:png,jpg,jpeg,heic,heif,webp", // Image validation
             "variations.*.specifications" => "required|array", // Specifications array
             "variations.*.specifications.*.key_id" => "required|exists:specification_keys,id", // Specification key (e.g., "Color")
             "variations.*.specifications.*.value" => "required|string"
         ]);
 
-        $product = Auth::user()->stores()->find($request['store_id'])->products()->create([
+        $user = User::find(Auth::id());
+        $product = $user->stores()->find($request['store_id'])->products()->create([
             "name" => $request['name'],
             "description" => $request['description'],
             "user_id" => Auth::id(),
@@ -67,7 +106,6 @@ class ProductController extends Controller
                 "featured_media_url" => $imagePaths[0], // First image as featured
                 "media_url" => json_encode($imagePaths),
                 "product_id" => $product->id,
-
             ]);
 
             foreach ($variation['specifications'] as $specification) {
@@ -89,11 +127,24 @@ class ProductController extends Controller
             ->paginate(10);
 
         $products->getCollection()->transform(function ($product) {
+            $currency = '';
             // Check if the product is in the user's wishlist
-            if (Auth::check()) {
-                $isWished = Auth::user()->wishlists()->where('product_id', $product->id)->exists();
-
+            if (auth('sanctum')->check()) {
+                $user = User::find(auth('sanctum')->id());
+                $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
+                $currency = $user->preferred_currency;
             }
+
+            // Convert each variation price
+            $product->productVariations->transform(function ($variation) use ($currency) {
+                $conversion = $this->currencyService->convert($variation->price, $currency);
+
+                $variation->converted_price = $conversion['amount'];
+                $variation->currency = $conversion['currency'];
+
+                return $variation;
+            });
+
             // Add wishedlist field to the product object
             $product->wished_list = $isWished ?? false;
 
@@ -116,14 +167,31 @@ class ProductController extends Controller
 
         $products->getCollection()->transform(function ($product) {
             // Check if the product is in the user's wishlist
-            $isWished = Auth::user()->wishlists()->where('product_id', $product->id)->exists();
+            if (auth('sanctum')->check()) {
+                $user = User::find(auth('sanctum')->id());
+                $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
+
+            }
 
             // Add wishedlist field to the product object
-            $product->wished_list = $isWished;
+            $product->wished_list = $isWished ?? false;
 
             return $product;
         });
 
         return Response::success(message: "Searched products retrieved", data: $products->toArray());
+    }
+
+    public function delete(string $id)
+    {
+        $product = Product::where('id', $id)->where('user_id', Auth::id())->first();
+
+        if (!$product) {
+            return Response::notFound(message: "Product not found");
+        }
+
+        $product->delete();
+
+        return Response::success(message: "Product deleted successfully");
     }
 }

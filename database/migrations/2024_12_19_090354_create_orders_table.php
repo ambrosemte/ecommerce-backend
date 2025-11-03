@@ -15,8 +15,11 @@ return new class extends Migration {
             $table->string('tracking_id')->unique();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('delivery_detail_id')->nullable()->constrained()->cascadeOnUpdate();
-            $table->string('status');
-            $table->decimal('total_price', 14, 2);
+            $table->foreignUuid('store_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('product_variation_id')->constrained()->cascadeOnDelete();
+            $table->integer('quantity');
+            $table->decimal('price', 14, 2);
             $table->timestamps();
         });
     }

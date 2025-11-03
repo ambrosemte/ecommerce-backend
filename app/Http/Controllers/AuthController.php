@@ -35,7 +35,6 @@ class AuthController extends Controller
     public function loginViaGoogle(Request $request): JsonResponse
     {
         $request->validate([
-            "id_token" => "required|string",
             "access_token" => "required|string",
         ]);
 
@@ -140,6 +139,7 @@ class AuthController extends Controller
             "password" => ["required", Password::min(6)],
             "phone" => "required|numeric",
         ]);
+        
         return AuthTrait::register($registerData);
     }
 

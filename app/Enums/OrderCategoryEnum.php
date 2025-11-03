@@ -3,7 +3,7 @@ namespace App\Enums;
 
 enum OrderCategoryEnum
 {
-    const TOPAY = "To Pay";
     const TORECEIVE = "To Receive";
+    const CANCELLED = "Cancelled / Refunded";
     const TOREVIEW = "To Review";
 }

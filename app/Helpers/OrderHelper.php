@@ -5,7 +5,7 @@ use App\Enums\OrderStatusEnum;
 
 class OrderHelper
 {
-    function getOrderStatusText($status)
+    public static function getOrderStatusText($status)
     {
         switch ($status) {
             case OrderStatusEnum::ORDERPLACED:

@@ -11,11 +11,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, HasUuids, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, HasUuids, SoftDeletes, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -30,7 +31,8 @@ class User extends Authenticatable
         'google_id',
         'facebook_id',
         'email_verified_at',
-        'image_url'
+        'image_url',
+        'preferred_currency'
     ];
 
     /**

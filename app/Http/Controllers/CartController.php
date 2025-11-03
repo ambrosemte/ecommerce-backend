@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Response;
 use App\Models\Cart;
+use App\Models\Product;
+use App\Models\ProductVariation;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -11,7 +14,9 @@ class CartController extends Controller
 {
     public function index()
     {
-        $cart = Auth::user()->carts()->with(["product", "productVariation.productMedia"])
+        $user = User::find(Auth::id());
+
+        $cart = $user->carts()->with(["product", "productVariation.productMedia"])
             ->get();
 
         $data = [
@@ -25,13 +30,28 @@ class CartController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            "store_id" => "required|exists:stores,id",
             "product_id" => "required|exists:products,id",
             "product_variation_id" => "required|exists:product_variations,id",
             "quantity" => "required|numeric|min:1|max_digits:11",
             "delivery_detail_id" => "nullable|exists:delivery_details,id",
         ]);
 
-        $cartItem = Auth::user()->carts()
+        $user = User::find(Auth::id());
+
+        // Fetch the product variation
+        $productVariation = ProductVariation::find($request['product_variation_id']);
+
+
+        // ✅ Check if enough quantity is available
+        if ($productVariation->quantity < $request['quantity']) {
+            return Response::error(400, "Not enough stock available for this product.");
+        }
+
+        $productVariation->decrement('quantity', $request['quantity']);
+
+
+        $cartItem = $user->carts()
             ->where('product_id', $request['product_id'])
             ->first();
 
@@ -42,8 +62,9 @@ class CartController extends Controller
             ]);
         } else {
             // Add new item to cart
-            Auth::user()->carts()->create([
+            $user->carts()->create([
                 'user_id' => Auth::id(),
+                'store_id' => $request['store_id'],
                 'product_id' => $request['product_id'],
                 'product_variation_id' => $request['product_variation_id'],
                 'quantity' => $request['quantity'],
@@ -59,10 +80,12 @@ class CartController extends Controller
             "cart" => "array|required",
         ]);
 
+        $user = User::find(Auth::id());
+
         $cartItems = $request['cart'];
 
         foreach ($cartItems as $item) {
-            Auth::user()->carts()
+            $user->carts()
                 ->where('product_id', $item['product_id'])
                 ->update(['quantity' => $item['quantity']]);
         }
@@ -72,13 +95,20 @@ class CartController extends Controller
 
     public function delete(string $id)
     {
-        $cart = Auth::user()->carts()->where('id', $id)->first();
+        $user = User::find(Auth::id());
+
+        $cart = $user->carts()->where('id', $id)->first();
 
         if (!$cart) {
             return Response::notFound(message: "Product not found for this user");
         }
 
         $cart->delete();
+
+        $productVariation = ProductVariation::find($cart->product_variation_id);
+
+        $productVariation->increment('quantity', $cart->quantity);
+
 
         return Response::success(message: "Product removed from cart");
     }

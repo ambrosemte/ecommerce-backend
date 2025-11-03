@@ -14,11 +14,12 @@ class UserController extends Controller
 {
     public function getProfile()
     {
+        $user = User::find(Auth::id());
 
         $data = [
             "user" => new UserResource(Auth::user()),
-            "deliveryDetails" => Auth::user()->deliveryDetails()->exists()
-                ? DeliveryDetailResource::collection(Auth::user()->deliveryDetails()->get())
+            "deliveryDetails" => $user->deliveryDetails()->exists()
+                ? DeliveryDetailResource::collection($user->deliveryDetails()->get())
                 : []
         ];
 
@@ -61,8 +62,21 @@ class UserController extends Controller
             "phone" => "required|numeric",
         ]);
 
-        Auth::user()->update(["phone" => $request['phone']]);
+        $user = User::find(Auth::id());
+        $user->update(["phone" => $request['phone']]);
 
         return Response::success(message: "Profile updated");
+    }
+
+    public function setPreferredCurrency(Request $request)
+    {
+        $request->validate([
+            'currency' => 'required|string|size:3',
+        ]);
+
+        $user = User::find(Auth::id());
+        $user->update(['preferred_currency' => $request['currency']]);
+
+        return Response::success(message: "Preferred currency updated");
     }
 }

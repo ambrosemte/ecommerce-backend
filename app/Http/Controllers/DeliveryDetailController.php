@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Response;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -10,7 +11,9 @@ class DeliveryDetailController extends Controller
 {
     public function index()
     {
-        $data = Auth::user()->deliveryDetails()->get()->toArray();
+        $user = User::find(Auth::id());
+
+        $data = $user->deliveryDetails()->get()->toArray();
 
         return Response::success(message: "Delivery details retrieved", data: $data);
     }
@@ -22,7 +25,7 @@ class DeliveryDetailController extends Controller
             "address" => "required|string|max:255",
             "city" => "required|string|max:80",
             "state" => "required|string|max:80",
-            "postcode" => "required|numeric|max:20",
+            'postcode' => 'required|string|max:20',
             "country" => "required|string|max:80",
             "phone" => "required|numeric",
             "alternative_phone" => "nullable|numeric",
@@ -30,11 +33,13 @@ class DeliveryDetailController extends Controller
             "is_default" => "required|boolean",
         ]);
 
+        $user = User::find(Auth::id());
+
         if ($request['is_default']) {
-            Auth::user()->deliveryDetails()->update(['is_default' => false]);
+            $user->deliveryDetails()->update(['is_default' => false]);
         }
 
-        Auth::user()->deliveryDetails()->create([
+        $user->deliveryDetails()->create([
             "contact_name" => $request['contact_name'],
             "street_address" => $request['address'],
             'city' => $request['city'],
@@ -58,7 +63,7 @@ class DeliveryDetailController extends Controller
             "address" => "required|string|max:255",
             "city" => "required|string|max:80",
             "state" => "required|string|max:80",
-            "postcode" => "required|numeric|max:20",
+            'postcode' => 'required|string|max:20',
             "country" => "required|string|max:80",
             "phone" => "required|numeric",
             "alternative_phone" => "nullable|numeric",
@@ -66,11 +71,13 @@ class DeliveryDetailController extends Controller
             "is_default" => "required|boolean",
         ]);
 
+        $user = User::find(Auth::id());
+
         if ($request['is_default']) {
-            Auth::user()->deliveryDetails()->update(['is_default' => false]);
+            $user->deliveryDetails()->update(['is_default' => false]);
         }
 
-        Auth::user()->deliveryDetails()->find($id)->update([
+        $user->deliveryDetails()->find($id)->update([
             "contact_name" => $request['contact_name'],
             "street_address" => $request['address'],
             'city' => $request['city'],
@@ -88,7 +95,9 @@ class DeliveryDetailController extends Controller
 
     public function delete(string $id)
     {
-        Auth::user()->deliveryDetails()->find($id)->delete();
+        $user = User::find(Auth::id());
+
+        $user->deliveryDetails()->find($id)->delete();
 
         return Response::success(message: "Delivery details deleted");
 

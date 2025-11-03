@@ -81,21 +81,27 @@ class SpecificationSeeder extends Seeder
         ];
 
         foreach ($allSpecifications as $categoryName => $specifications) {
-            $categoryId = Category::where('name', $categoryName)->first()->id;
+            $category = Category::where('name', $categoryName)->first();
+
+            if (!$category) {
+                continue;
+            }
+
+            $categoryId = $category->id;
 
             foreach ($specifications as $key => $value) {
-                $specificationKey = SpecificationKey::create([
+                $specificationKey = SpecificationKey::firstOrCreate([
                     'name' => $key,
                     'type' => $value['type']
                 ]);
 
-                CategorySpecification::create([
+                CategorySpecification::firstOrCreate([
                     'category_id' => $categoryId,
                     'specification_key_id' => $specificationKey->id
                 ]);
 
                 foreach ($value['data'] as $item) {
-                    $specificationKey->specificationValues()->create([
+                    $specificationKey->specificationValues()->firstOrCreate([
                         'value' => $item
                     ]);
                 }

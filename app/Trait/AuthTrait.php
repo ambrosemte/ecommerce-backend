@@ -2,9 +2,11 @@
 
 namespace App\Trait;
 
+use App\Enums\RoleEnum;
 use App\Helpers\Response;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use Spatie\Permission\Contracts\Role;
 
 trait AuthTrait
 {
@@ -23,6 +25,7 @@ trait AuthTrait
     {
         $user = User::create($registerData);
         $user->wallet()->create();
+        $user->assignRole(RoleEnum::USER);
 
         $data = [
             "user" => new UserResource(User::find($user->id)),

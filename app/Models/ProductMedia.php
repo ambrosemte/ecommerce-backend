@@ -22,7 +22,7 @@ class ProductMedia extends Model
         "media_url" => "array"
     ];
 
-    protected $hidden=[
+    protected $hidden = [
         "created_at",
         "updated_at",
     ];
@@ -39,6 +39,11 @@ class ProductMedia extends Model
     {
         // Decode the JSON string into an array
         $mediaFiles = json_decode($value, true);
+
+        // If the first decode results in a string, decode again
+        if (is_string($mediaFiles)) {
+            $mediaFiles = json_decode($mediaFiles, true);
+        }
 
         // Check if the array is valid and contains at least one item
         if (is_array($mediaFiles) && count($mediaFiles) > 0) {
