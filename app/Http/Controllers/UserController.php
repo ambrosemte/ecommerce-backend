@@ -79,4 +79,16 @@ class UserController extends Controller
 
         return Response::success(message: "Preferred currency updated");
     }
+
+    public function updateFirebaseToken(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+        ]);
+
+        $user = User::find(Auth::id());
+        $user->update(['firebase_token' => $request['token']]);
+
+        return Response::success(message: "Firebase token updated");
+    }
 }

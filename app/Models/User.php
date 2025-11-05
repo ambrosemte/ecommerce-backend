@@ -32,7 +32,8 @@ class User extends Authenticatable
         'facebook_id',
         'email_verified_at',
         'image_url',
-        'preferred_currency'
+        'preferred_currency',
+        'firebase_token'
     ];
 
     /**
@@ -104,6 +105,11 @@ class User extends Authenticatable
     public function carts()
     {
         return $this->hasMany(Cart::class);
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
     }
 
 }

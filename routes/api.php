@@ -5,6 +5,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DeliveryDetailController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SpecificationController;
@@ -48,6 +49,7 @@ Route::group(['prefix' => 'v1'], function () {
         Route::get('check-authentication', [UserController::class, 'checkAuthentication']);
         Route::put('profile/update', [UserController::class, 'updateProfile']);
         Route::patch('preferred-currency', [UserController::class, 'setPreferredCurrency']);
+        Route::patch('firebase-token', [UserController::class, 'updateFirebaseToken']);
     });
 
     //STORE
@@ -122,5 +124,13 @@ Route::group(['prefix' => 'v1'], function () {
         Route::post('send', [ChatController::class, 'sendMessage']);
         Route::patch('conversation/{conversationId}/join', [ChatController::class, 'joinConversation']);
     });
+
+    //NOTIFICATION
+    Route::group(['prefix' => 'notification', 'middleware' => ['auth:sanctum']], function () {
+        Route::get('/', [NotificationController::class, 'getUserNotifications']);
+        Route::post('send', [NotificationController::class, 'sendNotification']);
+        Route::patch('mark-as-read', [NotificationController::class, 'markAsRead']);
+    });
+
 
 });

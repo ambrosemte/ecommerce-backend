@@ -41,4 +41,8 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI')
     ],
 
+    'firebase' => [
+        'credentials' => storage_path('app/private/firebase/service-account.json'),
+    ],
+
 ];
