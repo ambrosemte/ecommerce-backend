@@ -18,11 +18,15 @@ class NotificationService
             'body' => $body
         ]);
 
-        NotificationModel::where('user_id', $userId)
+        $idsToDelete = NotificationModel::where('user_id', $userId)
             ->orderByDesc('created_at')
-            ->skip(30) // skip latest 30
-            ->take(PHP_INT_MAX) // all older
-            ->delete();
+            ->skip(30)
+            ->take(PHP_INT_MAX)
+            ->pluck('id');
+
+        if ($idsToDelete->isNotEmpty()) {
+            NotificationModel::whereIn('id', $idsToDelete)->delete();
+        }
 
         $factory = (new Factory)->withServiceAccount(config('services.firebase.credentials'));
         $messaging = $factory->createMessaging();
