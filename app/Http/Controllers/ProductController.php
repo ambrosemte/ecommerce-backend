@@ -166,12 +166,23 @@ class ProductController extends Controller
             ->paginate(30);
 
         $products->getCollection()->transform(function ($product) {
+            $currency = '';
             // Check if the product is in the user's wishlist
             if (auth('sanctum')->check()) {
                 $user = User::find(auth('sanctum')->id());
                 $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
-
+                $currency = $user->preferred_currency;
             }
+
+            // Convert each variation price
+            $product->productVariations->transform(function ($variation) use ($currency) {
+                $conversion = $this->currencyService->convert($variation->price, $currency);
+
+                $variation->converted_price = $conversion['amount'];
+                $variation->currency = $conversion['currency'];
+
+                return $variation;
+            });
 
             // Add wishedlist field to the product object
             $product->wished_list = $isWished ?? false;
