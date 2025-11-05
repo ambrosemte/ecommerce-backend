@@ -11,10 +11,12 @@ class NotificationController extends Controller
     public function sendNotification(Request $request)
     {
 
-        $token = $request->user()->firebase_token;
+        $user = $request->user();
+        $userId = $user->id;
+        $token = $user->firebase_token;
 
         $isSent = app(NotificationService::class)->sendNotification(
-            $request->user_id,
+            $userId,
             $token,
             'Hello!',
             'This is a test notification'
