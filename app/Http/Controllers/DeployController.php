@@ -13,10 +13,17 @@ class DeployController extends Controller
     {
         $secret = env('GITHUB_WEBHOOK_SECRET');
         $signature = $request->header('X-Hub-Signature-256');
+
         $payload = $request->getContent();
+
+        // Calculate hash
         $hash = 'sha256=' . hash_hmac('sha256', $payload, $secret);
 
-        if (!hash_equals($signature, $hash)) {
+        if (!hash_equals($hash, $signature)) {
+            Log::error('Signature mismatch', [
+                'expected' => $signature,
+                'calculated' => $hash
+            ]);
             return response()->json(['error' => 'Invalid signature'], 403);
         }
 
