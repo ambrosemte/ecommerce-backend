@@ -13,11 +13,13 @@ class Message extends Model
         'sender_id',
         'message',
         'is_read',
-        'conversation_id'
+        'conversation_id',
+        'is_user_message'
     ];
 
     protected $casts = [
         'is_read' => 'boolean',
+        'is_user_message' => 'boolean'
     ];
 
     public function sender()

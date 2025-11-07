@@ -129,7 +129,8 @@ Route::group(['prefix' => 'v1'], function () {
 
     //CHAT
     Route::group(['prefix' => 'chat', 'middleware' => ['auth:sanctum']], function () {
-        Route::get('conversation', [ChatController::class, 'getOrCreateConversationCustomer']);
+        Route::post('conversation', [ChatController::class, 'createConversation']);
+        Route::get('conversation', [ChatController::class, 'getConversationCustomer']);
         Route::get('conversation/agent', [ChatController::class, 'getConversationAgent']);
         Route::get('messages/{conversationId}', [ChatController::class, 'getMessages']);
         Route::post('send', [ChatController::class, 'sendMessage']);

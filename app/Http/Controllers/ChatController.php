@@ -15,13 +15,31 @@ use Illuminate\Support\Facades\Auth;
 class ChatController extends Controller
 {
     protected $firebaseService;
+    protected $ablyService;
 
-    public function __construct(FirebaseService $firebaseService)
+
+    public function __construct(FirebaseService $firebaseService, AblyService $ablyService)
     {
         $this->firebaseService = $firebaseService;
+        $this->ablyService = $ablyService;
     }
 
-    public function getOrCreateConversationCustomer()
+    public function createConversation()
+    {
+        $customerId = Auth::id();
+
+        $conversation = Conversation::firstOrCreate([
+            'user_one_id' => $customerId,
+            'is_completed' => false,
+        ]);
+
+        return Response::success(message: "Conversation started", data: [
+            'id' => $conversation->id,
+            'is_completed' => $conversation->is_completed
+        ]);
+    }
+
+    public function getConversationCustomer()
     {
         $customerId = Auth::id();
 
@@ -30,17 +48,10 @@ class ChatController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (!$conversation) {
-            $conversation = Conversation::create([
-                'user_one_id' => $customerId,
-                'is_completed' => false,
-            ]);
-        }
-
-        return Response::success(message: "Conversation retrieved", data: [
-            'id' => $conversation->id,
-            'is_completed' => $conversation->is_completed
-        ]);
+        return Response::success(
+            message: "Conversation retrieved",
+            data: $conversation ? $conversation->toArray() : []
+        );
     }
 
     public function getConversationAgent()
@@ -66,7 +77,6 @@ class ChatController extends Controller
             data: $conversations->toArray()
         );
     }
-
 
 
     public function getMessages($conversationId)
@@ -101,6 +111,7 @@ class ChatController extends Controller
             'conversation_id' => $request['conversation_id'],
             'sender_id' => Auth::id(),
             'message' => $request['message'],
+            'is_user_message' => true
         ]);
 
         $isAgentSending = $conversation->user_one_id !== $senderId;
@@ -119,8 +130,7 @@ class ChatController extends Controller
 
         $message = $message->load('sender');
 
-        $ably = new (AblyService::class);
-        $ably->publish(
+        $this->ablyService->publish(
             "conversation.$conversationId",
             'new-message',
             $message->toArray()
@@ -141,9 +151,25 @@ class ChatController extends Controller
             return Response::error(message: "Conversation not found or already completed");
         }
 
-        if (!$conversation->agents()->where('user_id', $agentId)->exists()) {
-            $conversation->agents()->attach($agentId);
+        if ($conversation->agents()->where('user_id', $agentId)->exists()) {
+            return Response::error(message: "You are already part of this conversation");
         }
+
+        $conversation->agents()->attach($agentId);
+
+        $message = $conversation->messages()->create([
+            'sender_id' => $agentId,
+            'message' => Auth::user()->name . " joined the chat",
+            'is_user_message' => false, //system type message
+        ]);
+
+        $message = $message->load('sender');
+
+        $this->ablyService->publish(
+            "conversation.$conversationId",
+            'agent-joined',
+            $message->toArray()
+        );
 
         return Response::success(message: "Conversation joined", data: [
             'name' => Auth::user()->name,
@@ -173,9 +199,39 @@ class ChatController extends Controller
             'left_at' => now(),
         ]);
 
+        //current agent left broadcasr
+        $message = $conversation->messages()->create([
+            'sender_id' => $currentAgentId,
+            'message' => User::find($currentAgentId)->name . " left the chat",
+            'is_user_message' => false, //system type message
+        ]);
+
+        $message = $message->load('sender');
+
+        $this->ablyService->publish(
+            "conversation.$conversationId",
+            'agent-left',
+            $message->toArray()
+        );
+
         if ($newAgentId && !$conversation->agents()->where('user_id', $newAgentId)->exists()) {
             $conversation->agents()->attach($newAgentId);
         }
+
+        //new agent joined broadcast
+        $message = $conversation->messages()->create([
+            'sender_id' => $newAgentId,
+            'message' => User::find($newAgentId)->name . " joined the chat",
+            'is_user_message' => false, //system type message
+        ]);
+
+        $message = $message->load('sender');
+
+        $this->ablyService->publish(
+            "conversation.$conversationId",
+            'agent-joined',
+            $message->toArray()
+        );
 
         return Response::success(message: "Conversation transferred successfully");
     }
@@ -199,6 +255,20 @@ class ChatController extends Controller
             $conversation->agents()->updateExistingPivot($agentId, [
                 'left_at' => now(),
             ]);
+
+            $message = $conversation->messages()->create([
+                'sender_id' => $agentId,
+                'message' => Auth::user()->name . " left the chat",
+                'is_user_message' => false, //system type message
+            ]);
+
+            $message = $message->load('sender');
+
+            $this->ablyService->publish(
+                "conversation.$conversationId",
+                'agent-left',
+                $message->toArray()
+            );
 
             return Response::success(message: "You have closed the conversation");
         }
