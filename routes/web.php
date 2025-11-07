@@ -10,4 +10,4 @@ Route::get('/', function () {
 });
 
 
-Route::match(['get', 'post'], '/deploy', [DeployController::class, 'deploy'])->name('deploy')->middleware('guest');
+Route::match(['get', 'post'], '/deploy', [DeployController::class, 'deploy']);
