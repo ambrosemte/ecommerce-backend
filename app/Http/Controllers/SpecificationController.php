@@ -21,11 +21,16 @@ class SpecificationController extends Controller
         return Response::success(message: 'Specifications retrieved', data: $specifications);
     }
 
+    /**
+     * Create a new specification key and attach it to a category.
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:100',
             'type' => 'required|in:text,integer,list,multiple',
             'values' => 'nullable|array',
             'values.*' => 'string|max:255'
@@ -51,5 +56,19 @@ class SpecificationController extends Controller
         }
 
         return Response::success(message: 'Specification added successfully');
+    }
+
+    public function delete($id)
+    {
+        $specificationKey = SpecificationKey::find($id);
+
+        if (!$specificationKey) {
+            return Response::notFound(message: 'Specification Key not found');
+        }
+
+        $specificationKey->specificationValues()->delete();
+        $specificationKey->delete();
+
+        return Response::success(message: 'Specification deleted successfully');
     }
 }

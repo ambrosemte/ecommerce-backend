@@ -9,7 +9,16 @@ class Message extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['sender_id', 'message', 'is_read','conversation_id'];
+    protected $fillable = [
+        'sender_id',
+        'message',
+        'is_read',
+        'conversation_id'
+    ];
+
+    protected $casts = [
+        'is_read' => 'boolean',
+    ];
 
     public function sender()
     {
@@ -19,5 +28,16 @@ class Message extends Model
     public function conversation()
     {
         return $this->belongsTo(Conversation::class);
+    }
+
+    protected $appends = ['sender_role'];
+
+    public function getSenderRoleAttribute()
+    {
+        if (!$this->sender) {
+            return null;
+        }
+
+        return $this->sender->getRoleNames()->first();
     }
 }

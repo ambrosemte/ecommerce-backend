@@ -11,10 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('category_specification', function (Blueprint $table) {
-            $table->foreignUuid('category_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('specification_key_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
+        Schema::table('conversations', function (Blueprint $table) {
+            $table->dropColumn('user_two_id');
         });
     }
 
@@ -23,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('category_specification');
+        Schema::table('conversations', function (Blueprint $table) {
+            //
+        });
     }
 };

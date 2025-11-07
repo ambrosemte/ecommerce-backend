@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Response;
-use App\Services\NotificationService;
+use App\Services\FirebaseService;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
@@ -15,7 +15,7 @@ class NotificationController extends Controller
         $userId = $user->id;
         $token = $user->firebase_token;
 
-        $isSent = app(NotificationService::class)->sendNotification(
+        $isSent = app(FirebaseService::class)->sendNotification(
             $userId,
             $token,
             'Hello!',

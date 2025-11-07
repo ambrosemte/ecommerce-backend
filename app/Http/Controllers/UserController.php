@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+    /**
+     * Get authenticated users profile
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getProfile()
     {
         $user = User::find(Auth::id());
@@ -26,6 +30,11 @@ class UserController extends Controller
         return Response::success(message: "User profile retrieved", data: $data);
     }
 
+    /**
+     * Update authenticated user profile image
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function updateProfileImage(Request $request)
     {
         $request->validate([
@@ -48,11 +57,16 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * Check if user is authenticated
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function checkAuthentication()
     {
-        if (Auth::check()) {
-            return Response::success();
+        if (!Auth::check()) {
+            return Response::error(401, 'Unauthenticated');
         }
+        return Response::success();
     }
 
 
@@ -68,6 +82,11 @@ class UserController extends Controller
         return Response::success(message: "Profile updated");
     }
 
+    /**
+     * Set authenticated user preferred currency
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function setPreferredCurrency(Request $request)
     {
         $request->validate([
@@ -80,6 +99,11 @@ class UserController extends Controller
         return Response::success(message: "Preferred currency updated");
     }
 
+    /**
+     * Upate authenticated users firebase device token
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function updateFirebaseToken(Request $request)
     {
         $request->validate([
@@ -90,5 +114,15 @@ class UserController extends Controller
         $user->update(['firebase_token' => $request['token']]);
 
         return Response::success(message: "Firebase token updated");
+    }
+
+    public function getUsers()
+    {
+        $users = User::select(['name', 'email', 'phone'])
+            ->latest()
+            ->paginate(15)
+            ->toArray();
+
+        return Response::success(200, 'Users retrieved', $users);
     }
 }

@@ -63,13 +63,21 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::query()
+
+        $user = User::find(Auth::id());
+
+        $query = Order::query()
             ->where(function ($query) use ($id) {
                 $query->where('id', $id)
                     ->orWhere('tracking_id', $id);
-            })
-            ->where('user_id', Auth::id())
-            ->first();
+            });
+
+
+        if (!$user->hasAnyRole(['admin', 'agent'])) {
+            $query->where('user_id', $user->id);
+        }
+
+        $order = $query->first();
 
         if (!$order) {
             return Response::notFound(message: "Order not found");
@@ -83,6 +91,8 @@ class OrderController extends Controller
         ]);
 
         return Response::success(message: "Order retrieved", data: $order->toArray());
+
+
 
     }
 
@@ -135,23 +145,37 @@ class OrderController extends Controller
         return Response::success(message: "Order cancelled");
     }
 
-    public function getSellerOrders()
+    public function getAdminSellerOrders()
     {
-        $orders = Order::whereHas('store', function ($query) {
-            $query->where('user_id', Auth::id());
-        })->with([
-                    'product',
-                    'product.productVariations' => function ($query) {
-                        $query->whereHas('orders'); // Filter product variations that have been ordered
-                    },
-                    'product.productVariations.productMedia', // Load product media
-                    'store',
-                    'latestStatus'
-                ])->get()
-            ->toArray();
+        $user = User::find(Auth::id());
 
-        return Response::success(message: "Seller orders retrieved", data: $orders);
+        $query = Order::with([
+            'product',
+            'product.productVariations' => function ($query) {
+                $query->whereHas('orders'); // Only variations that were ordered
+            },
+            'product.productVariations.productMedia',
+            'store',
+            'latestStatus'
+        ]);
+
+        // If seller or agent — limit to their store
+        if ($user->hasRole('seller')) {
+            $query->whereHas('store', function ($storeQuery) use ($user) {
+                $storeQuery->where('user_id', $user->id);
+            });
+
+            $orders = $query->get(); // no pagination for seller
+        }
+
+        // Admin or Agent: all orders with pagination
+        else if ($user->hasAnyRole(['admin', 'agent'])) {
+            $orders = $query->paginate(15);
+        }
+
+        return Response::success(message: "Admin/Seller Orders retrieved successfully", data: $orders->toArray());
     }
+
 
     public function acceptOrder(string $id)
     {

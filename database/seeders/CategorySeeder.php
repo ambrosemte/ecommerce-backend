@@ -21,7 +21,7 @@ class CategorySeeder extends Seeder
             'Accessory'
         ];
         foreach ($categories as $category) {
-            Category::create(["name" => $category]);
+            Category::firstOrCreate(['name' => $category]);
         }
     }
 }

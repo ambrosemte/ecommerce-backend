@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Auth;
 
 class StoreController extends Controller
 {
+    /**
+     * Get all stores for the authenticated user (Seller & Agent)
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index()
     {
         $stores = Store::where('user_id', Auth::id())
@@ -21,10 +25,15 @@ class StoreController extends Controller
         if ($stores->isEmpty()) {
             return Response::notFound(message: "No stores found for this user");
         }
-       
+
         return Response::success(message: "Stores retireved", data: $stores->toArray());
     }
 
+    /**
+     * Get store details by ID
+     * @param string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show(string $id)
     {
         $store = Store::with(['products.productVariations.productMedia'])
@@ -51,6 +60,11 @@ class StoreController extends Controller
         return Response::success(message: "Store retireved", data: $store->toArray());
     }
 
+    /**
+     * Create a new store (Seller & Agent)
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -69,6 +83,11 @@ class StoreController extends Controller
         return Response::success(message: "Store created");
     }
 
+    /**
+     * Follow a store
+     * @param string $storeId
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function follow(string $storeId)
     {
         $store = Store::find($storeId);
@@ -85,6 +104,11 @@ class StoreController extends Controller
         return Response::success(message: "Store followed");
     }
 
+    /**
+     * Delete a store (Seller & Agent)
+     * @param string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function delete(string $id)
     {
         $store = Store::where('id', $id)
@@ -98,5 +122,20 @@ class StoreController extends Controller
         $store->delete();
 
         return Response::success(message: "Store deleted successfully.");
+    }
+
+    /**
+     * Get all stores with products and followers count (Admin)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getStores()
+    {
+        $stores = Store::with(['products.productVariations.productMedia'])
+            ->withCount('followers')
+            ->latest()
+            ->paginate(15)
+            ->toArray();
+
+        return Response::success(200, 'Stores retrieved', $stores);
     }
 }
