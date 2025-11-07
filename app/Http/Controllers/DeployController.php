@@ -27,7 +27,7 @@ class DeployController extends Controller
             return response()->json(['error' => 'Invalid signature'], 403);
         }
 
-        Log::info('GitHub Webhook triggered deployment....');
+        Log::info('GitHub Webhook triggered deployment..');
 
         try {
             // Pull latest code
