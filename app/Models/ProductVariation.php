@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CurrencyConversionService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,6 +21,39 @@ class ProductVariation extends Model
             'quantity' => 'integer',
             'price' => 'double',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::retrieved(function ($productVariation) {
+            $productVariation->convertPrice();
+        });
+    }
+
+    public function convertPrice(?string $currency = '')
+    {
+        // 1️⃣ Get the currency from the user preference, session, or fallback
+        $userCurrency = $currency
+            ?? auth('sanctum')->user()->preferred_currency;
+
+        // 2️⃣ Call your conversion service
+        $currencyService = app(CurrencyConversionService::class);
+        $conversion = $currencyService->convert($this->price, $userCurrency);
+
+        // 3️⃣ Store or return the converted data
+        $this->converted_price = $conversion['amount'];
+        $this->currency = $conversion['currency'];
+
+
+        $this->discounted_price = ($this->discount != null)
+            ? round($this->price - (($this->discount * $this->price) / 100), 2)
+            : $this->price;
+
+        $conversion = $currencyService->convert($this->discounted_price, $currency);
+
+        $this->converted_discounted_price = $conversion['amount'];
+
+        return $this;
     }
 
     public function product()

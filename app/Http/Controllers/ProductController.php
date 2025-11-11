@@ -2,22 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SessionKey;
+use App\Models\RecentlyViewed;
 use Illuminate\Http\Request;
 use App\Helpers\Response;
 use App\Models\Product;
 use App\Models\User;
-use App\Services\CurrencyConversionService;
+use App\Services\RecentlyViewedService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
-    protected $currencyService;
-
-    public function __construct(CurrencyConversionService $currencyService)
-    {
-        $this->currencyService = $currencyService;
-    }
-
     public function show(string $id)
     {
         $product = Product::select(['id', 'store_id', 'name', 'description'])
@@ -32,34 +28,7 @@ class ProductController extends Controller
             return Response::notFound(message: "Product not found");
         }
 
-        $currency = '';
-        // Check if the product is in the user's wishlist
-        if (auth('sanctum')->check()) {
-            $user = User::find(auth('sanctum')->id());
-            $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
-            $currency = $user->preferred_currency;
-        }
-
-        // Convert each variation price
-        $product->productVariations->transform(function ($variation) use ($currency) {
-            $conversion = $this->currencyService->convert($variation->price, $currency);
-
-            $variation->converted_price = $conversion['amount'];
-            $variation->currency = $conversion['currency'];
-
-
-            $variation->discounted_price = ($variation->discount != null)
-                ? round($variation->price - (($variation->discount * $variation->price) / 100), 2)
-                : $variation->price;
-
-            $conversion = $this->currencyService->convert($variation->discounted_price, $currency);
-
-            $variation->converted_discounted_price = $conversion['amount'];
-
-            return $variation;
-        });
-
-        $product->wished_list = $isWished ?? false;
+        app(RecentlyViewedService::class)->logView($id);
 
         return Response::success(message: "Product retrieved", data: $product->toArray());
     }
@@ -126,31 +95,6 @@ class ProductController extends Controller
             ->with(['productVariations', 'productVariations.productMedia', 'wishlist'])
             ->paginate(10);
 
-        $products->getCollection()->transform(function ($product) {
-            $currency = '';
-            // Check if the product is in the user's wishlist
-            if (auth('sanctum')->check()) {
-                $user = User::find(auth('sanctum')->id());
-                $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
-                $currency = $user->preferred_currency;
-            }
-
-            // Convert each variation price
-            $product->productVariations->transform(function ($variation) use ($currency) {
-                $conversion = $this->currencyService->convert($variation->price, $currency);
-
-                $variation->converted_price = $conversion['amount'];
-                $variation->currency = $conversion['currency'];
-
-                return $variation;
-            });
-
-            // Add wishedlist field to the product object
-            $product->wished_list = $isWished ?? false;
-
-            return $product;
-        });
-
         return Response::success(message: "Featured products retrieved", data: $products->toArray());
     }
 
@@ -164,31 +108,6 @@ class ProductController extends Controller
             ->with(['productVariations', 'productVariations.productMedia', 'wishlist'])
             ->where('name', 'LIKE', '%' . $request['query'] . '%')
             ->paginate(30);
-
-        $products->getCollection()->transform(function ($product) {
-            $currency = '';
-            // Check if the product is in the user's wishlist
-            if (auth('sanctum')->check()) {
-                $user = User::find(auth('sanctum')->id());
-                $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
-                $currency = $user->preferred_currency;
-            }
-
-            // Convert each variation price
-            $product->productVariations->transform(function ($variation) use ($currency) {
-                $conversion = $this->currencyService->convert($variation->price, $currency);
-
-                $variation->converted_price = $conversion['amount'];
-                $variation->currency = $conversion['currency'];
-
-                return $variation;
-            });
-
-            // Add wishedlist field to the product object
-            $product->wished_list = $isWished ?? false;
-
-            return $product;
-        });
 
         return Response::success(message: "Searched products retrieved", data: $products->toArray());
     }

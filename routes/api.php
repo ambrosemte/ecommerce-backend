@@ -8,10 +8,13 @@ use App\Http\Controllers\DeliveryDetailController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\RecentlyViewedController;
 use App\Http\Controllers\SpecificationController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Middleware\AuthOrGuest;
+use App\Http\Middleware\GuestIdentifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -66,7 +69,7 @@ Route::group(['prefix' => 'v1'], function () {
     });
 
     //PRODUCT
-    Route::group(['prefix' => 'product', 'middleware' => ['auth:sanctum']], function () {
+    Route::group(['prefix' => 'product', 'middleware' => [AuthOrGuest::class]], function () {
         Route::get('featured-products', [ProductController::class, 'featuredProducts'])->withoutMiddleware('auth:sanctum');
         Route::get('search', [ProductController::class, 'search'])->withoutMiddleware('auth:sanctum');
         Route::get('{id}', [ProductController::class, 'show'])->withoutMiddleware('auth:sanctum');
@@ -93,18 +96,25 @@ Route::group(['prefix' => 'v1'], function () {
     });
 
     //WISHLIST
-    Route::group(['prefix' => 'wishlist', 'middleware' => ['auth:sanctum']], function () {
+    Route::group(['prefix' => 'wishlist', 'middleware' => [AuthOrGuest::class]], function () {
         Route::get('/', [WishlistController::class, 'index']);
         Route::post('/', [WishlistController::class, 'store']);
         Route::delete('{id}', [WishlistController::class, 'delete']);
     });
 
     //CART
-    Route::group(['prefix' => 'cart', 'middleware' => ['auth:sanctum']], function () {
-        Route::get('/', [CartController::class, 'index']);
-        Route::post('/', [CartController::class, 'store']);
-        Route::put('/', [CartController::class, 'update']);
-        Route::delete('{id}', [CartController::class, 'delete']);
+    Route::group(['prefix' => 'cart'], function () {
+        // Routes accessible to both authenticated and guest users
+        Route::middleware([AuthOrGuest::class])->group(function () {
+            Route::get('/', [CartController::class, 'index']);
+            Route::post('/', [CartController::class, 'store']);
+            Route::delete('{id}', [CartController::class, 'delete']);
+        });
+
+        // Routes only for authenticated users
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::put('/', [CartController::class, 'update']);
+        });
     });
 
     //ORDER
@@ -146,5 +156,9 @@ Route::group(['prefix' => 'v1'], function () {
         Route::patch('mark-as-read', [NotificationController::class, 'markAsRead']);
     });
 
+    //RECENTLY VIEWED
+    Route::group(['prefix' => 'recently-viewed', 'middleware' => [AuthOrGuest::class]], function () {
+        Route::get('/', [RecentlyViewedController::class, 'index']);
+    });
 
 });

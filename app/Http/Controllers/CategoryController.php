@@ -23,13 +23,19 @@ class CategoryController extends Controller
 
     public function index()
     {
-        $user = request()->user();
-
         $query = Category::query();
 
-        // if (!$user || !$user->hasRole([RoleEnum::ADMIN, RoleEnum::AGENT, RoleEnum::SELLER])) {
-        //     $query->where('is_active', true);
-        // }
+        if (auth('sanctum')->check()) {
+            $user = User::find(auth('sanctum')->id());
+
+            if ($user->hasRole([RoleEnum::ADMIN, RoleEnum::AGENT, RoleEnum::SELLER])) {
+                // no filter
+            } else {
+                $query->where('is_active', true);
+            }
+        } else {
+            $query->where('is_active', true);
+        }
 
         $categories = $query->get()->toArray();
 
@@ -152,7 +158,7 @@ class CategoryController extends Controller
             return Response::notFound(message: "Category not found");
         }
 
-        $imagePath = $category->image_url; // keep current path
+        $imagePath = $category->getRawOriginal('image_url'); //keep current raw url
 
         // If a new image is uploaded, replace and delete the old one
         if ($request->hasFile('image')) {

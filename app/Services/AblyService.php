@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use Ably\AblyRest;
+use Ably\Exceptions\AblyException;
+use Exception;
+use Illuminate\Support\Facades\Log;
 
 class AblyService
 {
@@ -15,6 +18,11 @@ class AblyService
 
     public function publish($channel, $event, $data)
     {
-        $this->ably->channel($channel)->publish($event, $data);
+        try {
+            $this->ably->channel($channel)->publish($event, $data);
+        } catch (AblyException | Exception $e) {
+            Log::error('Ably error: ' . $e->getMessage());
+        }
+
     }
 }
