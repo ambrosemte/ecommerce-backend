@@ -2,16 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SessionKey;
 use App\Helpers\Response;
 use App\Http\Resources\DeliveryDetailResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+    protected UserService $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
+
     /**
      * Get authenticated users profile
      * @return \Illuminate\Http\JsonResponse
@@ -37,23 +47,15 @@ class UserController extends Controller
      */
     public function updateProfileImage(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             "image" => "required|file|mimes:png,jpg,jpeg|max:5120",
         ]);
 
         try {
-            $imagePath = $request->file('image')->store("profile-images", "public");
-
-            $oldImagePath = Auth::user()->image_url;
-            if ($oldImagePath) {
-                Storage::disk('public')->delete($oldImagePath);
-            }
-
-            User::where('id', Auth::id())->update(['image_url' => $imagePath]);
-
+            $this->userService->updateProfileImage($validated);
             return Response::success(message: "Profile image updated");
         } catch (\Exception $e) {
-            return Response::error(message: "Failed to update profile image. Error:" . $e->getMessage());
+            return Response::error(statusCode: 500, message: "Failed to update profile image. Error: " . $e->getMessage());
         }
     }
 
@@ -64,7 +66,7 @@ class UserController extends Controller
     public function checkAuthentication()
     {
         if (!Auth::check()) {
-            return Response::error(401, 'Unauthenticated');
+            return Response::error(statusCode: 401, message: 'Unauthenticated');
         }
         return Response::success();
     }
@@ -72,14 +74,16 @@ class UserController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             "phone" => "required|numeric",
         ]);
 
-        $user = User::find(Auth::id());
-        $user->update(["phone" => $request['phone']]);
-
-        return Response::success(message: "Profile updated");
+        try {
+            $this->userService->updateProfile($validated);
+            return Response::success(message: "Profile updated");
+        } catch (\Exception $e) {
+            return Response::error(statusCode: 400, message: $e->getMessage());
+        }
     }
 
     /**
@@ -89,14 +93,16 @@ class UserController extends Controller
      */
     public function setPreferredCurrency(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'currency' => 'required|string|size:3',
         ]);
 
-        $user = User::find(Auth::id());
-        $user->update(['preferred_currency' => $request['currency']]);
-
-        return Response::success(message: "Preferred currency updated");
+        try {
+            $this->userService->setPreferredCurrency($validated);
+            return Response::success(message: "Preferred currency updated");
+        } catch (\Exception $e) {
+            return Response::error(statusCode: 400, message: $e->getMessage());
+        }
     }
 
     /**
@@ -106,23 +112,25 @@ class UserController extends Controller
      */
     public function updateFirebaseToken(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'token' => 'required|string',
         ]);
 
-        $user = User::find(Auth::id());
-        $user->update(['firebase_token' => $request['token']]);
-
-        return Response::success(message: "Firebase token updated");
+        try {
+            $this->userService->updateFirebaseToken($validated);
+            return Response::success(message: "Firebase token updated");
+        } catch (\Exception $e) {
+            return Response::error(statusCode: 400, message: $e->getMessage());
+        }
     }
 
     public function getUsers()
     {
-        $users = User::select(['name', 'email', 'phone'])
-            ->latest()
-            ->paginate(15)
-            ->toArray();
-
-        return Response::success(200, 'Users retrieved', $users);
+        try {
+            $data = $this->userService->getUsers();
+            return Response::success(message: 'Users retrieved', data: $data);
+        } catch (\Exception $e) {
+            return Response::error(statusCode: 400, message: $e->getMessage());
+        }
     }
 }

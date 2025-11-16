@@ -13,7 +13,9 @@ class Cart extends Model
         "product_id",
         "product_variation_id",
         "quantity",
-        "store_id"
+        "store_id",
+        "delivery_detail_id",
+        "shipping_method_id",
     ];
 
 

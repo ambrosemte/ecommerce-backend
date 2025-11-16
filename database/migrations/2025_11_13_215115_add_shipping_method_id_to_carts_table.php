@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->integer('progress_level')->after('quantity')->default(0);
+        Schema::table('carts', function (Blueprint $table) {
+            $table->foreignId('shipping_method_id')->after('delivery_detail_id')->nullable()->constrained()->cascadeOnUpdate();
         });
     }
 
@@ -21,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
+        Schema::table('carts', function (Blueprint $table) {
             //
         });
     }

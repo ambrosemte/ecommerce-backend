@@ -12,6 +12,12 @@ trait AuthTrait
 {
     public static function login(string $userId)
     {
+        $guestId = request()->header('X-Guest-Id');
+
+        if (!$guestId) {
+            return Response::error(401, "Missing guest ID header.");
+        }
+
         $user = User::find($userId);
         $data = [
             "user" => new UserResource($user),
@@ -23,6 +29,12 @@ trait AuthTrait
 
     public static function register(array $registerData)
     {
+        $guestId = request()->header('X-Guest-Id');
+
+        if (!$guestId) {
+            return Response::error(401, "Missing guest ID header.");
+        }
+
         $user = User::create($registerData);
         $user->wallet()->create();
         $user->assignRole(RoleEnum::USER);

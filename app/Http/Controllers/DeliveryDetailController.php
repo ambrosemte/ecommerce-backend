@@ -27,8 +27,8 @@ class DeliveryDetailController extends Controller
             "state" => "required|string|max:80",
             'postcode' => 'required|string|max:20',
             "country" => "required|string|max:80",
-            "phone" => "required|numeric",
-            "alternative_phone" => "nullable|numeric",
+            "phone" => "required|string",
+            "alternative_phone" => "nullable|string",
             "note" => "nullable|string|max:255",
             "is_default" => "required|boolean",
         ]);
@@ -37,6 +37,10 @@ class DeliveryDetailController extends Controller
 
         if ($request['is_default']) {
             $user->deliveryDetails()->update(['is_default' => false]);
+            $isDefault = true;
+        } else {
+            $hasExistingAddress = $user->deliveryDetails()->exists();
+            $isDefault = !$hasExistingAddress;
         }
 
         $user->deliveryDetails()->create([
@@ -49,9 +53,8 @@ class DeliveryDetailController extends Controller
             'phone' => $request['phone'],
             'alternative_phone' => $request['alternative_phone'],
             "note" => $request['note'],
-            "is_default" => $request['is_default'],
+            "is_default" => $isDefault,
         ]);
-
         return Response::success(message: "Delivery details added");
 
     }

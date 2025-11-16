@@ -13,7 +13,7 @@ class Order extends Model
     protected $fillable = [
         "user_id",
         "quantity",
-        "delivery_details_id",
+        "delivery_detail_id",
         "tracking_id",
         "store_id",
         "product_id",
@@ -21,6 +21,9 @@ class Order extends Model
         "quantity",
         "price",
         "progress_level",
+        "shipping_method_id",
+        "shipping_cost",
+        "total",
     ];
 
     protected static function boot()
@@ -55,6 +58,16 @@ class Order extends Model
     public function latestStatus()
     {
         return $this->hasOne(OrderStatus::class)->latestOfMany();
+    }
+
+    public function shippingMethod()
+    {
+        return $this->belongsTo(ShippingMethod::class, 'shipping_method_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'product_variation_id', 'product_variation_id');
     }
 
 }

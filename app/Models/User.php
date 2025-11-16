@@ -112,4 +112,14 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function recentlyViewed()
+    {
+        return $this->hasMany(RecentlyViewed::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
 }

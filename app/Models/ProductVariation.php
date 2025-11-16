@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\CurrencyConversionService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class ProductVariation extends Model
 {
@@ -30,17 +31,16 @@ class ProductVariation extends Model
         });
     }
 
-    public function convertPrice(?string $currency = '')
+    public function convertPrice()
     {
-        // 1️⃣ Get the currency from the user preference, session, or fallback
-        $userCurrency = $currency
-            ?? auth('sanctum')->user()->preferred_currency;
+        // Get the currency from the user preference, session, or fallback
+        $userCurrency = auth('sanctum')->user()->preferred_currency ?? '';
 
-        // 2️⃣ Call your conversion service
+        // Call your conversion service
         $currencyService = app(CurrencyConversionService::class);
         $conversion = $currencyService->convert($this->price, $userCurrency);
 
-        // 3️⃣ Store or return the converted data
+        // Store or return the converted data
         $this->converted_price = $conversion['amount'];
         $this->currency = $conversion['currency'];
 
@@ -49,11 +49,18 @@ class ProductVariation extends Model
             ? round($this->price - (($this->discount * $this->price) / 100), 2)
             : $this->price;
 
-        $conversion = $currencyService->convert($this->discounted_price, $currency);
+        $conversion = $currencyService->convert($this->discounted_price, $userCurrency);
 
         $this->converted_discounted_price = $conversion['amount'];
 
         return $this;
+    }
+
+    public function averageRating()
+    {
+        return $this->reviews()
+            ->where('approved', true)
+            ->avg('rating');
     }
 
     public function product()
@@ -74,5 +81,10 @@ class ProductVariation extends Model
     public function orders()
     {
         return $this->hasMany(Order::class, 'product_variation_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
     }
 }

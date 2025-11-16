@@ -4,11 +4,14 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\CscController;
 use App\Http\Controllers\DeliveryDetailController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RecentlyViewedController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ShippingController;
 use App\Http\Controllers\SpecificationController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\UserController;
@@ -30,39 +33,33 @@ Route::group(['prefix' => 'v1'], function () {
         Route::post('login-via-facebook', [AuthController::class, 'loginViaFacebook']);
         Route::post('register', [AuthController::class, 'register']);
         Route::post('logout', [AuthController::class, 'logout']);
-
-        Route::post('seller/login', [AuthController::class, 'login']);
-        Route::post('seller/login-via-google', [AuthController::class, 'loginViaGoogle']);
-        Route::post('seller/login-via-facebook', [AuthController::class, 'loginViaFacebook']);
-        Route::post('register', [AuthController::class, 'register']);
-        Route::post('logout', [AuthController::class, 'logout']);
-
-
-        Route::post('login', [AuthController::class, 'login']);
-        Route::post('login-via-google', [AuthController::class, 'loginViaGoogle']);
-        Route::post('login-via-facebook', [AuthController::class, 'loginViaFacebook']);
-        Route::post('register', [AuthController::class, 'register']);
-        Route::post('logout', [AuthController::class, 'logout']);
     });
 
     //USER
-    Route::group(['prefix' => 'user', 'middleware' => ['auth:sanctum']], function () {
-        Route::get('all', [UserController::class, 'getUsers']);//admin
+    Route::group(['prefix' => 'user'], function () {
+        // Routes accessible to only authenticated users
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('all', [UserController::class, 'getUsers'])->middleware('role:admin');//admin
 
-        Route::get('profile', [UserController::class, 'getProfile']);
-        Route::post('profile/image/update', [UserController::class, 'updateProfileImage']);
-        Route::get('check-authentication', [UserController::class, 'checkAuthentication']);
-        Route::put('profile/update', [UserController::class, 'updateProfile']);
-        Route::patch('preferred-currency', [UserController::class, 'setPreferredCurrency']);
-        Route::patch('firebase-token', [UserController::class, 'updateFirebaseToken']);
+            Route::get('profile', [UserController::class, 'getProfile']);
+            Route::post('profile/image/update', [UserController::class, 'updateProfileImage']);
+            Route::get('check-authentication', [UserController::class, 'checkAuthentication']);
+            Route::put('profile/update', [UserController::class, 'updateProfile']);
+            Route::patch('preferred-currency', [UserController::class, 'setPreferredCurrency']);
+        });
+
+        // Routes accessible to both authenticated and guest users
+        Route::middleware(AuthOrGuest::class)->group(function () {
+            Route::patch('firebase-token', [UserController::class, 'updateFirebaseToken']);
+        });
     });
 
     //STORE
-    Route::group(['prefix' => 'store', 'middleware' => ['auth:sanctum']], function () {
-        Route::get('all', [StoreController::class, 'getStores']);//admin
+    Route::group(['prefix' => 'store', 'middleware' => [AuthOrGuest::class]], function () {
+        Route::get('all', [StoreController::class, 'getStores'])->middleware('role:agent|admin');//admin
 
         Route::get('/', [StoreController::class, 'index'])->middleware('role:seller|agent');
-        Route::get('{id}', [StoreController::class, 'show'])->withoutMiddleware('auth:sanctum');
+        Route::get('{id}', [StoreController::class, 'show']);
         Route::post('/', [StoreController::class, 'store'])->middleware('role:seller|agent');
         Route::post('follow/{storeId}', [StoreController::class, 'follow']);
         Route::delete('{id}', [StoreController::class, 'delete'])->middleware('role:seller|agent');
@@ -70,21 +67,21 @@ Route::group(['prefix' => 'v1'], function () {
 
     //PRODUCT
     Route::group(['prefix' => 'product', 'middleware' => [AuthOrGuest::class]], function () {
-        Route::get('featured-products', [ProductController::class, 'featuredProducts'])->withoutMiddleware('auth:sanctum');
-        Route::get('search', [ProductController::class, 'search'])->withoutMiddleware('auth:sanctum');
-        Route::get('{id}', [ProductController::class, 'show'])->withoutMiddleware('auth:sanctum');
+        Route::get('featured-products', [ProductController::class, 'featuredProducts']);
+        Route::get('search', [ProductController::class, 'search']);
+        Route::get('{id}', [ProductController::class, 'show']);
         Route::post('/', [ProductController::class, 'store'])->middleware('role:seller|agent');
-        Route::delete('{id}', [ProductController::class, 'delete'])->middleware('role:seller|agent');
+        Route::delete('{id}', [ProductController::class, 'delete'])->middleware('role:seller|agent|admin');
     });
 
     //CATEGORY
-    Route::group(['prefix' => 'category', 'middleware' => ['auth:sanctum']], function () {
-        Route::get('{id}', [CategoryController::class, 'show']);//admin
-        Route::get('{id}/products', [CategoryController::class, 'getProductByCategory'])->withoutMiddleware('auth:sanctum');
-        Route::get('/', [CategoryController::class, 'index'])->withoutMiddleware('auth:sanctum');
-        Route::post('/', [CategoryController::class, 'store']);//admin
-        Route::post('{id}/update', [CategoryController::class, 'update'])->Middleware('role:admin');
-        Route::delete('{id}', [CategoryController::class, 'delete'])->Middleware('role:admin');
+    Route::group(['prefix' => 'category', 'middleware' => [AuthOrGuest::class]], function () {
+        Route::get('{id}', [CategoryController::class, 'show'])->middleware('role:agent|admin');//admin
+        Route::get('{id}/products', [CategoryController::class, 'getProductByCategory']);
+        Route::get('/', [CategoryController::class, 'index']);
+        Route::post('/', [CategoryController::class, 'store'])->middleware('role:admin');//admin
+        Route::post('{id}/update', [CategoryController::class, 'update'])->middleware('role:admin');
+        Route::delete('{id}', [CategoryController::class, 'delete'])->middleware('role:admin');
     });
 
     //DELIVERY DETAILS
@@ -119,22 +116,38 @@ Route::group(['prefix' => 'v1'], function () {
 
     //ORDER
     Route::group(['prefix' => 'order', 'middleware' => ['auth:sanctum']], function () {
+        // User routes
         Route::get('to-receive', [OrderController::class, 'getToReceiveOrders']);
         Route::get('cancelled', [OrderController::class, 'getCancelledOrders']);
+        Route::get('without-review', [OrderController::class, 'getOrdersWithoutReview']);
+        Route::get('activity', [OrderController::class, 'getOrdersActivity']);
         Route::post('/', [OrderController::class, 'store']);
-        Route::put('cancel/{id}', [OrderController::class, 'cancelOrder']);
-        Route::get('/', [OrderController::class, 'getAdminSellerOrders'])->Middleware('role:seller|agent|admin');
-        Route::put('accept/{id}', [OrderController::class, 'acceptOrder'])->Middleware('role:seller|agent');
-        Route::put('decline/{id}', [OrderController::class, 'declineOrder'])->Middleware('role:seller|agent');
+        Route::put('cancel/{id}', [OrderController::class, 'cancelOrder']); // User cancel
+        Route::put('request-refund/{id}', [OrderController::class, 'requestRefund']); // User Request Refund
+
+        Route::get('/', [OrderController::class, 'getOrders']);
+
+        // Seller/Admin routes
+        Route::put('accept/{id}', [OrderController::class, 'acceptOrder'])->middleware('role:seller|agent');
+        Route::put('decline/{id}', [OrderController::class, 'declineOrder'])->middleware('role:seller|agent');
+        Route::put('process/{id}', [OrderController::class, 'processOrder'])->middleware('role:agent|admin');
+        Route::put('ship/{id}', [OrderController::class, 'shipOrder'])->middleware('role:agent|admin');
+        Route::put('out-for-delivery/{id}', [OrderController::class, 'outForDelivery'])->middleware('role:agent|admin');
+        Route::put('delivered/{id}', [OrderController::class, 'markAsDelivered'])->middleware('role:agent|admin');
+        Route::put('approve-refund/{id}', [OrderController::class, 'approveRefund'])->middleware('role:agent|admin');
+        Route::put('decline-refund/{id}', [OrderController::class, 'declineRefund'])->middleware('role:agent|admin');
+
+        // Single order
         Route::get('{id}', [OrderController::class, 'show']);
     });
+
 
     //SPECIFICATION
     Route::group(['prefix' => 'specification', 'middleware' => ['auth:sanctum']], function () {
         Route::get('{categoryId}', [SpecificationController::class, 'index']);
-        Route::post('/', [SpecificationController::class, 'store'])->Middleware('role:admin');
-        Route::patch('{id}', [SpecificationController::class, 'update'])->Middleware('role:admin');
-        Route::delete('{id}', [SpecificationController::class, 'delete'])->Middleware('role:admin');
+        Route::post('/', [SpecificationController::class, 'store'])->middleware('role:admin');
+        Route::patch('{id}', [SpecificationController::class, 'update'])->middleware('role:admin');
+        Route::delete('{id}', [SpecificationController::class, 'delete'])->middleware('role:admin');
     });
 
     //CHAT
@@ -144,21 +157,60 @@ Route::group(['prefix' => 'v1'], function () {
         Route::get('conversation/agent', [ChatController::class, 'getConversationAgent']);
         Route::get('messages/{conversationId}', [ChatController::class, 'getMessages']);
         Route::post('send', [ChatController::class, 'sendMessage']);
-        Route::post('conversation/{conversationId}/join', [ChatController::class, 'joinConversation']);
-        Route::post('conversation/{conversationId}/transfer', [ChatController::class, 'transferConversation']);
-        Route::post('conversation/{conversationId}/close', [ChatController::class, 'closeConversation']);
+        Route::post('conversation/{conversationId}/join', [ChatController::class, 'joinConversation'])->middleware('role:agent|admin');
+        Route::post('conversation/{conversationId}/transfer', [ChatController::class, 'transferConversation'])->middleware('role:agent|admin');
+        Route::post('conversation/{conversationId}/close', [ChatController::class, 'closeConversation'])->middleware('role:agent|admin');
     });
 
     //NOTIFICATION
     Route::group(['prefix' => 'notification', 'middleware' => ['auth:sanctum']], function () {
         Route::get('/', [NotificationController::class, 'getUserNotifications']);
-        Route::post('send', [NotificationController::class, 'sendNotification']);
+        Route::post('send', [NotificationController::class, 'sendNotification'])->middleware('role:agent|admin');
         Route::patch('mark-as-read', [NotificationController::class, 'markAsRead']);
     });
 
     //RECENTLY VIEWED
     Route::group(['prefix' => 'recently-viewed', 'middleware' => [AuthOrGuest::class]], function () {
         Route::get('/', [RecentlyViewedController::class, 'index']);
+    });
+
+    //SHIPPING
+    Route::group(['prefix' => "shipping", 'middleware' => ['auth:sanctum']], function () {
+        Route::middleware('role:agent|admin')->group(function () {
+            Route::prefix('method')->group(function () {
+                Route::get('/', [ShippingController::class, 'getShippingMethods']);
+                Route::post('/', [ShippingController::class, 'createShippingMethod']);
+                Route::patch('{id}', [ShippingController::class, 'updateShippingMethod']);
+            });
+
+            Route::prefix('zone')->group(function () {
+                Route::get('/', [ShippingController::class, 'getShippingZones']);
+                Route::post('/', [ShippingController::class, 'createShippingZone']);
+                Route::patch('{id}', [ShippingController::class, 'updateShippingZone']);
+            });
+
+            Route::prefix('rate')->group(function () {
+                Route::get('{shippingZoneId?}', [ShippingController::class, 'getShippingRate']);
+                Route::post('/', [ShippingController::class, 'createShippingRate']);
+            });
+        });
+
+        Route::get('options/{deliveryDetailsId}', [ShippingController::class, 'getShippingOptions']);
+
+    });
+
+    //COUNTRY
+    Route::group(['prefix' => "csc", 'middleware' => ['auth:sanctum']], function () {
+        Route::get('countries', [CscController::class, 'getCountries']);
+        Route::get('{countryId}/states', [CscController::class, 'getStates']);
+        Route::get('{stateId}/cities', [CscController::class, 'getCities']);
+    });
+
+    //REVIEW
+    Route::group(['prefix' => "review", 'middleware' => ['auth:sanctum']], function () {
+        Route::post('/', [ReviewController::class, 'store']);
+        Route::put('accept/{id}', [ReviewController::class, 'accept'])->middleware('role:agent|admin');
+        Route::put('decline/{id}', [ReviewController::class, 'decline'])->middleware('role:agent|admin');
     });
 
 });

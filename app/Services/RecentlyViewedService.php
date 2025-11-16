@@ -3,13 +3,53 @@
 namespace App\Services;
 
 use App\Enums\SessionKey;
-use App\Helpers\Response;
+use App\Models\Product;
 use App\Models\RecentlyViewed;
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class RecentlyViewedService
 {
+    public function getRecentlyViewedItems()
+    {
+        if (auth('sanctum')->check()) {
+
+            $user = User::find(auth('sanctum')->id());
+
+            $recentItems = $user->recentlyViewed()
+                ->orderBy('updated_at')
+                ->get(['id', 'product_id']);
+        } else {
+            $guestId = request()->input('guest_id');
+
+            $sessionKey = SessionKey::RecentlyViewed->format($guestId);
+            $recentItems = Cache::get($sessionKey, []);
+
+            $recentItems = collect($recentItems); // make sure it's a Collection
+        }
+
+        // Extract all product IDs
+        $productIds = $recentItems->pluck('product_id')->toArray();
+
+        // Fetch products along with variations and media
+        $products = Product::with('productVariations.productMedia')
+            ->whereIn('id', $productIds)
+            ->get();
+
+        // Map cart items to include product and recently viewed ID
+        $recent = $recentItems->map(function ($recentItem) use ($products) {
+            $product = $products->firstWhere('id', $recentItem['product_id'] ?? $recentItem->product_id);
+
+            return [
+                'id' => $recentItem['id'] ?? $recentItem->id ?? null,
+                'product' => $product,
+            ];
+        });
+
+        return $recent->toArray();
+    }
+
     /*
      *log users recently viewed items
      */
@@ -51,14 +91,22 @@ class RecentlyViewedService
      */
     private function logForGuest($productId)
     {
-        $guestId = request()->get('guest_id');
-
+        $guestId = request()->input('guest_id');
         $sessionKey = SessionKey::RecentlyViewed->format($guestId);
-
         $recent = Cache::get($sessionKey, []);
-        $recent = array_values(array_diff($recent, [$productId]));
-        array_unshift($recent, $productId);
+
+        $recent = array_filter($recent, function ($item) use ($productId) {
+            return $item['product_id'] != $productId;
+        });
+
+        array_unshift($recent, [
+            'id' => (string) Str::uuid(),
+            'product_id' => $productId,
+        ]);
+
         $recent = array_slice($recent, 0, 10);
+
+        $recent = array_values($recent);
 
         Cache::put($sessionKey, $recent, now()->addDays(30));
     }
@@ -66,26 +114,26 @@ class RecentlyViewedService
     /*
      * Sync guest recently viewed items to the logged-in user account
      */
-    public function syncFromGuest(array $guestIds)
+    public function syncFromGuest(string $userId, string $guestId)
     {
-        // if (!Auth::check() || empty($guestIds)) {
-        //     return false;
-        // }
+        $sessionKey = SessionKey::RecentlyViewed->format($guestId);
 
-        // foreach ($guestIds as $productId) {
-        //     RecentlyViewed::updateOrCreate(
-        //         ['user_id' => Auth::id(), 'product_id' => $productId],
-        //         ['updated_at' => now()]
-        //     );
-        // }
+        $recentItems = Cache::get($sessionKey, []);
 
-        // // Trim to last 10
-        // RecentlyViewed::where('user_id', Auth::id())
-        //     ->orderByDesc('updated_at')
-        //     ->skip(10)
-        //     ->take(PHP_INT_MAX)
-        //     ->delete();
+        if (!empty($recentItems)) {
+            foreach ($recentItems as $item) {
+                RecentlyViewed::updateOrCreate(
+                    [
+                        'user_id' => $userId,
+                        'product_id' => $item['product_id'],
+                    ],
+                    [
+                        'updated_at' => now(),
+                    ]
+                );
+            }
 
-        // return true;
+            Cache::forget($sessionKey);
+        }
     }
 }
