@@ -97,7 +97,7 @@ class Store extends Model
         return $this->following()->detach($user);
     }
 
-    // Check if the user is following another user
+    // Check if the user is following store
     public function isFollowing(User $user)
     {
         return $this->following()->where('followed_id', $user->id)->exists();

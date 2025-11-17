@@ -61,7 +61,8 @@ Route::group(['prefix' => 'v1'], function () {
         Route::get('/', [StoreController::class, 'index'])->middleware('role:seller|agent');
         Route::get('{id}', [StoreController::class, 'show']);
         Route::post('/', [StoreController::class, 'store'])->middleware('role:seller|agent');
-        Route::post('follow/{storeId}', [StoreController::class, 'follow']);
+        Route::put('follow/{storeId}', [StoreController::class, 'follow']);
+        Route::put('unfollow/{storeId}', [StoreController::class, 'unfollow']);
         Route::delete('{id}', [StoreController::class, 'delete'])->middleware('role:seller|agent');
     });
 

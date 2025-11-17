@@ -44,18 +44,9 @@ class StoreController extends Controller
             return Response::notFound(message: "Store not found");
         }
 
-        $store->products->transform(function ($product) {
-            // Check if the product is in the user's wishlist
-            if (auth('sanctum')->check()) {
-                $user = User::find(auth('sanctum')->id());
-                $isWished = $user->wishlists()->where('product_id', $product->id)->exists();
+        $user = auth('sanctum')->user();
 
-            }
-            // Add wishedlist field to the product object
-            $product->wished_list = $isWished ?? false;
-
-            return $product;
-        });
+        $store->is_following = $user ? $store->isFollowing($user) : false;
 
         return Response::success(message: "Store retireved", data: $store->toArray());
     }
@@ -105,6 +96,27 @@ class StoreController extends Controller
     }
 
     /**
+     * unfollow a store
+     * @param string $storeId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function unfollow(string $storeId)
+    {
+        $store = Store::find($storeId);
+
+        if (!$store) {
+            return Response::notFound(message: "Store not found");
+        }
+        try {
+            $store->unfollow(Auth::user());
+        } catch (\Exception) {
+            return Response::error(message: "Already unfollowed store");
+        }
+
+        return Response::success(message: "Store unfollowed");
+    }
+
+    /**
      * Delete a store (Seller & Agent)
      * @param string $id
      * @return \Illuminate\Http\JsonResponse
@@ -130,7 +142,8 @@ class StoreController extends Controller
      */
     public function getStores()
     {
-        $stores = Store::with(['products.productVariations.productMedia'])
+        $stores = Store::select()
+            ->with(['products.productVariations.productMedia'])
             ->withCount('followers')
             ->latest()
             ->paginate(15)
