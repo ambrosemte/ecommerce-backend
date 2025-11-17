@@ -11,4 +11,14 @@ class CategorySpecification extends Model
         "category_id",
         "specification_key_id"
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function specificationKey()
+    {
+        return $this->belongsTo(SpecificationKey::class);
+    }
 }

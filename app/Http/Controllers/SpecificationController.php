@@ -36,19 +36,26 @@ class SpecificationController extends Controller
             'values.*' => 'string|max:255'
         ]);
 
-        // Create or get the specification key
-        $specKey = SpecificationKey::firstOrCreate(
-            ['name' => $validated['name']],
-            ['type' => $validated['type']]
-        );
+        $existingSpec = CategorySpecification::where('category_id', $validated['category_id'])
+            ->whereHas('specificationKey', function ($query) use ($validated) {
+                $query->where('name', $validated['name']);
+            })
+            ->first();
 
-        // Attach to category if not already attached
-        CategorySpecification::firstOrCreate([
-            'category_id' => $validated['category_id'],
-            'specification_key_id' => $specKey->id
-        ]);
+        if ($existingSpec) {
+            $specKey = $existingSpec->specificationKey;
+        } else {
+            $specKey = SpecificationKey::create([
+                'name' => $validated['name'],
+                'type' => $validated['type']
+            ]);
 
-        // Add specification values if provided
+            CategorySpecification::create([
+                'category_id' => $validated['category_id'],
+                'specification_key_id' => $specKey->id
+            ]);
+        }
+
         if (!empty($validated['values'])) {
             foreach ($validated['values'] as $value) {
                 $specKey->specificationValues()->firstOrCreate(['value' => $value]);
