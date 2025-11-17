@@ -48,7 +48,7 @@ class StoreController extends Controller
             $userId = auth('sanctum')->id();
             $user = User::find($userId);
 
-            $store->is_following = $user->isFollowingStore($store->id);
+            $store->is_following = $user->isFollowingStore($store);
         } else {
             $store->is_following = false;
         }
