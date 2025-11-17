@@ -96,7 +96,7 @@ Route::group(['prefix' => 'v1'], function () {
     Route::group(['prefix' => 'wishlist', 'middleware' => [AuthOrGuest::class]], function () {
         Route::get('/', [WishlistController::class, 'index']);
         Route::post('/', [WishlistController::class, 'store']);
-        Route::delete('{id}', [WishlistController::class, 'delete']);
+        Route::delete('/', [WishlistController::class, 'delete']);
     });
 
     //CART
@@ -208,9 +208,10 @@ Route::group(['prefix' => 'v1'], function () {
 
     //REVIEW
     Route::group(['prefix' => "review", 'middleware' => ['auth:sanctum']], function () {
+        Route::get('/', [ReviewController::class, 'index'])->middleware('role:agent|admin');
         Route::post('/', [ReviewController::class, 'store']);
-        Route::put('accept/{id}', [ReviewController::class, 'accept'])->middleware('role:agent|admin');
-        Route::put('decline/{id}', [ReviewController::class, 'decline'])->middleware('role:agent|admin');
+        Route::patch('approve/{id}', [ReviewController::class, 'approve'])->middleware('role:agent|admin');
+        Route::patch('decline/{id}', [ReviewController::class, 'decline'])->middleware('role:agent|admin');
     });
 
 });

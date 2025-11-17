@@ -16,10 +16,20 @@ class CurrencyConversionService
     ];
 
     /**
+     * Currency symbols.
+     */
+    protected $currencySymbols = [
+        'NGN' => '₦',
+        'USD' => '$',
+        'EUR' => '€',
+        'GBP' => '£',
+    ];
+
+    /**
      * Convert a price in NGN to the user's preferred currency.
      *
      * @param  int  $amount
-     * @param  string     $currency
+     * @param  string $currency
      * @return array
      */
     public function convert(int $amount, string $currency): array
@@ -38,6 +48,7 @@ class CurrencyConversionService
         return [
             'amount' => round($convertedAmount, 2),
             'currency' => $currency,
+            'symbol' => $this->currencySymbols[$currency] ?? '',
             'rate' => $rate,
         ];
     }

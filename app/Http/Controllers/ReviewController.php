@@ -69,8 +69,22 @@ class ReviewController extends Controller
         return Response::success(message: "Review submitted successfully");
     }
 
+    public function index()
+    {
+        $reviews = Review::select()->paginate(15);
+
+        $totalApproved = Review::where('approved', true)->count();
+
+        $reviewsArray = $reviews->toArray();
+
+        $data = array_merge(['total_approved' => $totalApproved], $reviewsArray);
+
+        return Response::success(message: "Reviews retrieved", data: $data);
+    }
+
+
     //ADMIN, AGENT
-    public function accept(string $id)
+    public function approve(string $id)
     {
         $review = Review::find($id);
 
@@ -78,7 +92,7 @@ class ReviewController extends Controller
             return Response::notFound(message: "Review not found");
         }
 
-        $review->update(['approve' => true]);
+        $review->update(['approved' => true]);
 
         return Response::success(message: "Review approved");
     }
@@ -92,7 +106,7 @@ class ReviewController extends Controller
             return Response::notFound(message: "Review not found");
         }
 
-        $review->update(['approve' => false]);
+        $review->update(['approved' => false]);
 
         return Response::success(message: "Review declined");
     }

@@ -14,7 +14,7 @@ class ProductMedia extends Model
         'media_type',
         'media_url',
         'featured_media_url',
-        'product_id'
+        'product_id',
     ];
     protected $table = 'product_medias';
 

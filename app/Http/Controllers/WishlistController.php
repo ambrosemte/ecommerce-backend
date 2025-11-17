@@ -73,12 +73,22 @@ class WishlistController extends Controller
         return Response::success(message: "Product added to wishlist");
     }
 
-    public function delete($id)
+    public function delete(Request $request)
     {
+        $id = $request->input('id') ?? "";
+        $productId = $request->input('product_id') ?? "";
+        $variationId = $request->input('product_variation_id') ?? "";
+
+        if (!$id && !($productId && $variationId)) {
+            return Response::error(
+                message: "You must provide either id alone, or both product_id and product_variation_id"
+            );
+        }
+
         try {
-            $this->wishlistService->removeFromWishlist($id);
+            $this->wishlistService->removeFromWishlist($id, $productId, $variationId);
         } catch (\Exception $e) {
-            return Response::error(400, $e->getMessage());
+            return Response::error(message: $e->getMessage());
         }
 
         return Response::success(message: "Product removed from wishlist");

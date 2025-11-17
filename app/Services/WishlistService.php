@@ -66,10 +66,16 @@ class WishlistService
     {
         if (auth('sanctum')->check()) {
             $userId = auth('sanctum')->id();
+            $user = User::find($userId);
 
-            User::find($userId)
-                ->wishlists()
-                ->create($data);
+            $exists = $user->wishlists()
+                ->where('product_id', $data['product_id'])
+                ->where('product_variation_id', $data['product_variation_id'])
+                ->exists();
+
+            if (!$exists) {
+                $user->wishlists()->create($data);
+            }
 
         } else {
             $guestId = request()->input('guest_id');
@@ -93,20 +99,28 @@ class WishlistService
         }
     }
 
-    public function removeFromWishlist(string $id)
+    public function removeFromWishlist(string $id, string $productId, string $productVariationId)
     {
         if (auth('sanctum')->check()) {
             $userId = auth('sanctum')->id();
 
-            $wishlist = User::find($userId)
-                ->wishlists()
-                ->find($id);
+            $query = User::find($userId)->wishlists();
+
+            if ($id) {
+                $wishlist = $query->find($id);
+            } else {
+                $wishlist = $query
+                    ->where('product_id', $productId)
+                    ->where('product_variation_id', $productVariationId)
+                    ->first();
+            }
 
             if (!$wishlist) {
                 throw new Exception("Product not found in wishlist");
             }
 
             $wishlist->delete();
+
         } else {
 
             $guestId = request()->input('guest_id');
@@ -114,25 +128,46 @@ class WishlistService
             $sessionKey = SessionKey::Wishlist->format($guestId);
             $cachedWishlist = Cache::get($sessionKey, []);
 
-            // Check if the product exists in the cache
-            $exists = collect($cachedWishlist)->contains(fn($item) => $item['id'] == $id);
+            if ($id) {
 
-            if (!$exists) {
-                throw new Exception("Product not found in guest wishlist");
+                // Check if the product exists in the cache
+                $exists = collect($cachedWishlist)->contains(fn($item) => $item['id'] == $id);
+
+                if (!$exists) {
+                    throw new Exception("Product not found in guest wishlist");
+                }
+
+                // Remove the product
+                $updatedWishlist = collect($cachedWishlist)
+                    ->reject(fn($item) => $item['id'] == $id)
+                    ->values()
+                    ->toArray();
+            } else {
+                $exists = collect($cachedWishlist)->contains(
+                    fn($item) =>
+                    $item['product_id'] == $productId && $item['product_variation_id'] == $productVariationId
+                );
+
+                if (!$exists) {
+                    throw new Exception("Product not found in guest wishlist");
+                }
+
+                $updatedWishlist = collect($cachedWishlist)
+                    ->reject(
+                        fn($item) =>
+                        $item['product_id'] == $productId && $item['product_variation_id'] == $productVariationId
+                    )
+                    ->values()
+                    ->toArray();
+
             }
-
-            // Remove the product
-            $updatedWishlist = collect($cachedWishlist)
-                ->reject(fn($item) => $item['id'] == $id)
-                ->values()
-                ->toArray();
 
             Cache::put($sessionKey, $updatedWishlist, now()->addDays(30));
 
         }
     }
 
-    public function syncFromGuest(string $userId,string $guestId)
+    public function syncFromGuest(string $userId, string $guestId)
     {
         $sessionKey = SessionKey::Cart->format($guestId);
         $items = Cache::get($sessionKey, []);

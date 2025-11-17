@@ -210,11 +210,11 @@ class OrderService
                 'product_id' => $cartItem->product_id,
                 'product_variation_id' => $cartItem->product_variation_id,
                 'quantity' => $cartItem->quantity,
-                'price' => $cartItem->productVariation->price,
+                'price' => $cartItem->productVariation->discounted_price,
                 'delivery_detail_id' => $deliveryDetailId,
                 'shipping_method_id' => $shippingMethodId,
                 'shipping_cost' => $rate->cost,
-                'total' => ($cartItem->quantity * $cartItem->productVariation->price) + $rate->cost
+                'total' => ($cartItem->quantity * $cartItem->productVariation->discounted_price) + $rate->cost
             ]);
 
             $this->createStatus($order, OrderStatusEnum::ORDER_PLACED, $user->id);
@@ -289,12 +289,20 @@ class OrderService
                 ]);
             })->count();
 
+        $userCurrency = $user->preferred_currency ?? '';
+
+        $converted = app(CurrencyConversionService::class)->convert(
+            0,
+            $userCurrency
+        );
+
         return [
             "total_orders_count" => $totalOrdersCount,
             "received_orders_count" => $receivedOrdersCount,
             "cancelled_orders_count" => $cancelledOrdersCount,
             "to_receive_orders_count" => $toReceiveOrdersCount,
-            "category_breakdown" => $this->getCategoryBreakDown($user)
+            "category_breakdown" => $this->getCategoryBreakDown(user: $user, targetCurrency: $userCurrency),
+            "category_breakdown_currency" => $converted['symbol'],
         ];
     }
 
@@ -410,7 +418,7 @@ class OrderService
         ]);
     }
 
-    private function getCategoryBreakdown(User $user)
+    private function getCategoryBreakdown(User $user, string $targetCurrency)
     {
         $stats = [];
 
@@ -470,6 +478,14 @@ class OrderService
             foreach ($orderData as $row) {
                 $monthName = Carbon::create()->month($row->month)->format('F');
                 $months[$monthName][$row->category] = (float) $row->total;
+
+                // Convert the amount using currency service
+                $converted = app(CurrencyConversionService::class)->convert(
+                    (int) $row->total,
+                    $targetCurrency
+                );
+
+                $months[$monthName][$row->category] = $converted['amount'];
             }
 
             // Save stats for this year

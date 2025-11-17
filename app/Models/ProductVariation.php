@@ -16,6 +16,9 @@ class ProductVariation extends Model
         "discount",
     ];
 
+    protected $appends = ['average_rating'];
+
+
     protected function casts(): array
     {
         return [
@@ -33,7 +36,7 @@ class ProductVariation extends Model
 
     public function convertPrice()
     {
-        // Get the currency from the user preference, session, or fallback
+        // Get the currency from the user preference or fallback
         $userCurrency = auth('sanctum')->user()->preferred_currency ?? '';
 
         // Call your conversion service
@@ -42,7 +45,7 @@ class ProductVariation extends Model
 
         // Store or return the converted data
         $this->converted_price = $conversion['amount'];
-        $this->currency = $conversion['currency'];
+        $this->currency = $conversion['symbol'];
 
 
         $this->discounted_price = ($this->discount != null)
@@ -56,11 +59,13 @@ class ProductVariation extends Model
         return $this;
     }
 
-    public function averageRating()
+    public function getAverageRatingAttribute()
     {
-        return $this->reviews()
+        $avg = $this->reviews()
             ->where('approved', true)
             ->avg('rating');
+
+        return is_null($avg) ? 0 : number_format($avg, 1);
     }
 
     public function product()

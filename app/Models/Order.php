@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CurrencyConversionService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -33,6 +34,26 @@ class Order extends Model
         static::creating(function ($order) {
             $order->tracking_id = 'TRACK-' . strtoupper(Str::random(10));
         });
+
+        static::retrieved(function ($productVariation) {
+            $productVariation->convertPrice();
+        });
+    }
+
+    public function convertPrice()
+    {
+        // Get the currency from the user preference or fallback
+        $userCurrency = auth('sanctum')->user()->preferred_currency ?? '';
+
+        // Call your conversion service
+        $currencyService = app(CurrencyConversionService::class);
+        $conversion = $currencyService->convert($this->price ?? 0, $userCurrency);
+
+        // Store or return the converted data
+        $this->converted_price = $conversion['amount'];
+        $this->currency = $conversion['symbol'];
+
+        return $this;
     }
 
     public function store()

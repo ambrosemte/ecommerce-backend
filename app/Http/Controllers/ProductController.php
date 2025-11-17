@@ -2,15 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\SessionKey;
-use App\Models\RecentlyViewed;
 use Illuminate\Http\Request;
 use App\Helpers\Response;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\RecentlyViewedService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -20,6 +17,10 @@ class ProductController extends Controller
             ->with([
                 'productVariations.productMedia',
                 'productVariations.productSpecifications.specificationKey',
+                'productVariations.reviews' => function ($query) {
+                    $query->where('approved', true)
+                        ->with('user:id,name');
+                },
                 'store:id,name,image_url',
             ])
             ->find($id);
@@ -61,7 +62,17 @@ class ProductController extends Controller
 
         foreach ($request['variations'] as $variation) {
             $imagePaths = [];
+            $imageHashes = [];
             foreach ($variation['images'] as $image) {
+                $hash = md5_file($image->getRealPath());
+
+                // Check if this hash already exists in this variation
+                if (in_array($hash, $imageHashes)) {
+                    return Response::error(message: "Duplicate image detected in this variation");
+                }
+
+                $imageHashes[] = $hash;
+
                 $imagePaths[] = $image->store("product-image", "public");
             }
 
