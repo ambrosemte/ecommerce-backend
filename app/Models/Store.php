@@ -100,7 +100,7 @@ class Store extends Model
     // Check if the user is following store
     public function isFollowing(User $user)
     {
-        return $this->following()->where('followed_id', $user->id)->exists();
+        return $this->following()->where('user_id', $user->id)->exists();
     }
 
 }
