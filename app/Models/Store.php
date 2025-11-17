@@ -79,28 +79,6 @@ class Store extends Model
 
     public function followers()
     {
-        return $this->hasMany(StoreFollower::class);
+        return $this->belongsToMany(User::class, 'store_followers', 'store_id', 'user_id');
     }
-
-    public function following()
-    {
-        return $this->belongsToMany(Store::class, 'store_followers', 'store_id', 'user_id');
-    }
-
-    public function follow(User $user)
-    {
-        return $this->following()->attach($user);
-    }
-
-    public function unfollow(User $user)
-    {
-        return $this->following()->detach($user);
-    }
-
-    // Check if the user is following store
-    public function isFollowing(User $user)
-    {
-        return $this->following()->where('user_id', $user->id)->exists();
-    }
-
 }

@@ -122,4 +122,24 @@ class User extends Authenticatable
         return $this->hasMany(Review::class);
     }
 
+    public function followedStores()
+    {
+        return $this->belongsToMany(Store::class, 'store_followers', 'user_id', 'store_id');
+    }
+
+    public function followStore(Store $store)
+    {
+        return $this->followedStores()->attach($store->id);
+    }
+
+    public function unfollowStore(Store $store)
+    {
+        return $this->followedStores()->detach($store->id);
+    }
+
+    public function isFollowingStore(Store $store)
+    {
+        return $this->followedStores()->where('store_id', $store->id)->exists();
+    }
+
 }

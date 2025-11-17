@@ -44,9 +44,14 @@ class StoreController extends Controller
             return Response::notFound(message: "Store not found");
         }
 
-        $user = auth('sanctum')->user();
+        if (auth('sanctum')->check()) {
+            $userId = auth('sanctum')->id();
+            $user = User::find($userId);
 
-        $store->is_following = $user ? $store->isFollowing($user) : false;
+            $store->is_following = $user->isFollowingStore($store->id);
+        } else {
+            $store->is_following = false;
+        }
 
         return Response::success(message: "Store retireved", data: $store->toArray());
     }
