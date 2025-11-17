@@ -86,13 +86,14 @@ class StoreController extends Controller
      */
     public function follow(string $storeId)
     {
+        $user = User::find(Auth::id());
         $store = Store::find($storeId);
 
         if (!$store) {
             return Response::notFound(message: "Store not found");
         }
         try {
-            $store->follow(Auth::user());
+            $user->followStore($store);
         } catch (\Exception) {
             return Response::error(message: "Already following store");
         }
@@ -107,13 +108,14 @@ class StoreController extends Controller
      */
     public function unfollow(string $storeId)
     {
+        $user = User::find(Auth::id());
         $store = Store::find($storeId);
 
         if (!$store) {
             return Response::notFound(message: "Store not found");
         }
         try {
-            $store->unfollow(Auth::user());
+            $user->unfollowStore($store);
         } catch (\Exception) {
             return Response::error(message: "Already unfollowed store");
         }
