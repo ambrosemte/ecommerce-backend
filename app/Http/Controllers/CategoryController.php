@@ -162,8 +162,9 @@ class CategoryController extends Controller
 
         // If a new image is uploaded, replace and delete the old one
         if ($request->hasFile('image')) {
-            if ($category->image_url && Storage::disk('public')->exists($category->image_url)) {
-                Storage::disk('public')->delete($category->image_url);
+            $oldImage = $category->getRawOriginal('image_url');
+            if ($oldImage && Storage::disk('public')->exists($oldImage)) {
+                Storage::disk('public')->delete($oldImage);
             }
 
             $imagePath = $request->file('image')->store('category-image', 'public');

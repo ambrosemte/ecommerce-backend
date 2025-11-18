@@ -20,7 +20,7 @@ class StoreController extends Controller
         $stores = Store::where('user_id', Auth::id())
             ->with(['products.productVariations.productMedia'])
             ->withCount('followers')
-            ->get(); // Get all stores instead of just one
+            ->get();
 
         if ($stores->isEmpty()) {
             return Response::notFound(message: "No stores found for this user");
@@ -67,7 +67,8 @@ class StoreController extends Controller
             "name" => "required|string|max:100",
             "image" => "required|max:5120|mimes:png,jpg,jpeg"
         ]);
-        $user = User::find(Auth::id());
+
+        $user = $request->user();
 
         $imagePath = $request->file("image")->store("store-image", "public");
 

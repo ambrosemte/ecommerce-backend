@@ -10,14 +10,20 @@ use Illuminate\Support\Facades\Log;
 class ProductVariation extends Model
 {
     use HasUuids;
+
     protected $fillable = [
         "price",
         "quantity",
         "discount",
     ];
 
-    protected $appends = ['average_rating'];
-
+    protected $appends = [
+        'average_rating',
+        'converted_price',
+        'currency',
+        'discounted_price',
+        'converted_discounted_price'
+    ];
 
     protected function casts(): array
     {
@@ -27,38 +33,59 @@ class ProductVariation extends Model
         ];
     }
 
-    protected static function booted(): void
+    /**
+     * Accessor for converted_price
+     */
+    public function getConvertedPriceAttribute()
     {
-        static::retrieved(function ($productVariation) {
-            $productVariation->convertPrice();
-        });
-    }
-
-    public function convertPrice()
-    {
-        // Get the currency from the user preference or fallback
         $userCurrency = auth('sanctum')->user()->preferred_currency ?? '';
-
-        // Call your conversion service
         $currencyService = app(CurrencyConversionService::class);
         $conversion = $currencyService->convert($this->price, $userCurrency);
 
-        // Store or return the converted data
-        $this->converted_price = $conversion['amount'];
-        $this->currency = $conversion['symbol'];
-
-
-        $this->discounted_price = ($this->discount != null)
-            ? round($this->price - (($this->discount * $this->price) / 100), 2)
-            : $this->price;
-
-        $conversion = $currencyService->convert($this->discounted_price, $userCurrency);
-
-        $this->converted_discounted_price = $conversion['amount'];
-
-        return $this;
+        return $conversion['amount'];
     }
 
+    /**
+     * Accessor for currency
+     */
+    public function getCurrencyAttribute()
+    {
+        $userCurrency = auth('sanctum')->user()->preferred_currency ?? '';
+        $currencyService = app(CurrencyConversionService::class);
+        $conversion = $currencyService->convert($this->price, $userCurrency);
+
+        return $conversion['symbol'];
+    }
+
+    /**
+     * Accessor for discounted_price
+     */
+    public function getDiscountedPriceAttribute()
+    {
+        if ($this->discount != null) {
+            return round($this->price - (($this->discount * $this->price) / 100), 2);
+        }
+
+        return $this->price;
+    }
+
+    /**
+     * Accessor for converted_discounted_price
+     */
+    public function getConvertedDiscountedPriceAttribute()
+    {
+        $discountedPrice = $this->discounted_price;
+
+        $userCurrency = auth('sanctum')->user()->preferred_currency ?? '';
+        $currencyService = app(CurrencyConversionService::class);
+        $conversion = $currencyService->convert($discountedPrice, $userCurrency);
+
+        return $conversion['amount'];
+    }
+
+    /**
+     * Accessor for average_rating
+     */
     public function getAverageRatingAttribute()
     {
         $avg = $this->reviews()

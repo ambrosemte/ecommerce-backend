@@ -81,4 +81,10 @@ class Store extends Model
     {
         return $this->belongsToMany(User::class, 'store_followers', 'store_id', 'user_id');
     }
+
+    public function stories()
+    {
+        return $this->hasMany(Story::class)->active();
+    }
+
 }

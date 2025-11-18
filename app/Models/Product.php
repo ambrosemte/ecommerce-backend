@@ -15,40 +15,32 @@ class Product extends Model
         'name',
         'description',
         'user_id',
-        'category_id'
+        'category_id',
+        'store_id',
     ];
-
-    protected static function booted(): void
-    {
-        static::retrieved(function ($product) {
-            $product->checkIfWishlisted();
-        });
-    }
+    
+    protected $appends = ['wished_list'];
 
     /**
-     * Compute and attach the wished_list flag.
+     * Accessor for wished_list
      */
-    public function checkIfWishlisted(): void
+    public function getWishedListAttribute(): bool
     {
         $userId = auth('sanctum')->id();
         $user = User::find($userId);
 
         if ($user) {
             // Authenticated user
-            $isWished = $user->wishlists()
+            return $user->wishlists()
                 ->where('product_id', $this->id)
                 ->exists();
-
-            $this->wished_list = $isWished;
-            return;
         }
 
         // Guest user
         $guestId = request()->input('guest_id');
 
         if (!$guestId) {
-            $this->is_wishlisted = false;
-            return;
+            return false;
         }
 
         $sessionKey = SessionKey::Wishlist->format($guestId);
@@ -56,9 +48,8 @@ class Product extends Model
 
         $productIds = collect($ids)->pluck('product_id')->toArray();
 
-        $this->wished_list = in_array($this->id, $productIds, true);
+        return in_array($this->id, $productIds, true);
     }
-
 
     public function reviews()
     {
