@@ -69,9 +69,43 @@ class ReviewController extends Controller
         return Response::success(message: "Review submitted successfully");
     }
 
-    public function index()
+    public function getReviewsForProduct(Request $request)
     {
-        $reviews = Review::select()->paginate(15);
+        $request->validate([
+            'product_id' => 'required|string',
+            'product_variation_id' => 'required|string'
+        ]);
+
+        $reviews = Review::select([
+            'user_id',
+            'product_id',
+            'product_variation_id',
+            'message',
+            'approved',
+            'rating'
+        ])->with(['user'])
+            ->where('product_id', $request['product_id'])
+            ->where('product_variation_id', $request['product_variation_id'])
+            ->where('approved', true)
+            ->latest()
+            ->paginate(15);
+
+        return Response::success(message: "Reviews retrieved", data: $reviews->toArray());
+    }
+
+
+    public function adminReviews()
+    {
+        $reviews = Review::select([
+            'user_id',
+            'product_id',
+            'product_variation_id',
+            'message',
+            'approved',
+            'rating',
+            'created_at'
+        ])->with(['user'])
+            ->paginate(15);
 
         $totalApproved = Review::where('approved', true)->count();
 

@@ -309,8 +309,10 @@ Route::group(['prefix' => 'v1'], function () {
     //REVIEW
     Route::group(['prefix' => "review", 'middleware' => ['auth:sanctum']], function () {
 
-        Route::get('/', [ReviewController::class, 'index'])
+        Route::get('all', [ReviewController::class, 'index'])
             ->middleware('role:agent|admin');
+
+        Route::get('product', [ReviewController::class, 'getReviewsForProduct']);
 
         Route::post('/', [ReviewController::class, 'store']);
 
@@ -326,6 +328,9 @@ Route::group(['prefix' => 'v1'], function () {
 
         Route::get('feed', [StoryController::class, 'feed'])
             ->middleware([AuthOrGuest::class]);
+
+        Route::get('all', [StoryController::class, 'adminStories'])
+            ->middleware(['auth:sanctum', 'role:seller|agent|admin']);
 
         Route::get('store/{storeId}', [StoryController::class, 'showStoreStories'])
             ->middleware([AuthOrGuest::class]);

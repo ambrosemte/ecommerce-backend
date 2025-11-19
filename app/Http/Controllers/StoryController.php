@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Enums\RoleEnum;
 use App\Helpers\Response;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class StoryController extends Controller
 
         $expiresAt = now()->addHours($request['duration_hours'] ?? 24);
 
-        $story = Story::create([
+        Story::create([
             'store_id' => $store->id,
             'product_id' => $product->id ?? null,
             'media_url' => $mediaPath,
@@ -52,7 +53,7 @@ class StoryController extends Controller
             'expires_at' => $expiresAt,
         ]);
 
-        return Response::success(message: "Story uploaded", data: $story->fresh()->toArray());
+        return Response::success(message: "Story uploaded");
     }
 
     public function feed(Request $request)
@@ -88,7 +89,7 @@ class StoryController extends Controller
 
     public function showStoreStories($storeId)
     {
-        $stories = Story::with(['products'])
+        $stories = Story::with(['product'])
             ->where('store_id', $storeId)
             ->active()
             ->orderBy('created_at', 'desc')
@@ -108,7 +109,6 @@ class StoryController extends Controller
         $user = $request->user();
         $guestId = $request->input('guest_id');
 
-        // Prevent duplicate views: use unique combination user_id or guest_id
         $exists = StoryView::where('story_id', $story->id)
             ->when($user, fn($q) => $q->where('user_id', $user->id), fn($q) => $q->where('guest_id', $guestId))
             ->exists();
@@ -124,4 +124,29 @@ class StoryController extends Controller
 
         return Response::success(message: "view recorded");
     }
+
+    public function adminStories()
+    {
+        $user = request()->user();
+
+        if ($user->hasRole([RoleEnum::SELLER])) {
+
+            $storeIds = $user->stores()->pluck('id');
+
+            $stories = Story::select(['id', 'store_id', 'product_id', 'caption', 'expires_at', 'media_url', 'type'])
+                ->with(['store', 'product'])
+                ->whereIn('store_id', $storeIds)
+                ->latest()
+                ->paginate(15);
+        } else {
+            $stories = Story::select(['id', 'store_id', 'product_id', 'caption', 'expires_at', 'media_url', 'type'])
+                ->with(['store', 'product'])
+                ->latest()
+                ->paginate(15);
+        }
+
+
+        return Response::success(data: $stories->toArray());
+    }
+
 }
